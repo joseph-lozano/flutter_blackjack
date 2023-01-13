@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -8,41 +10,63 @@ void main() {
 class Game extends StatefulWidget {
   Game({Key? key}) : super(key: key);
 
-  bool _isDataLoading = true;
-  String _deckId = "";
-
-  final dec = Uri.https('https://deckofcardsapi.com', '/api/deck/new/shuffle/');
-  // final response = await http.post(url, body: {'name': 'doodle', 'color': 'blue'});
-// print('Response status: ${response.statusCode}');
-// print('Response body: ${response.body}');
-
-// print(await http.read(Uri.https('example.com', 'foobar.txt')));
-
-  // const Game({super.key, this.deckId));
-
-  // final String deckId;
-  Future<Void> _getDeckId() async {
-    var response = await http.get(
-      Uri.encodeFull(dec),
-      headers: {"Accept": 'application/json'},
-    );
-
-    setState(() {
-      var data = json.decode(response.body);
-      _isDataLoading = false;
-      _deckId = data;
-    })
-    // return deckId
-  }
-
   @override
-  _GameState createState() => _GameState(deckId);
+  State<StatefulWidget> createState() => _GameState();
+
+  // return deckId
+}
+
+class Deck {
+  final String deckId;
+  final bool success;
+  final int remaining;
+  final bool shuffled;
+
+  Deck(
+      {required this.deckId,
+      required this.success,
+      required this.remaining,
+      required this.shuffled});
+
+  factory Deck.fromJson(Map<String, dynamic> json) {
+    return Deck(
+        deckId: json['deck_id'],
+        success: json['success'],
+        remaining: json['remaining'],
+        shuffled: json['shuffled']);
+  }
 }
 
 class _GameState extends State<Game> {
+  final Uri dec = Uri.https('deckofcardsapi.com', '/api/deck/new/shuffle/');
+  late Future<Deck> futureDeck;
+
+  Future<Deck> fetchDeck() async {
+    var resp = await http.get(dec);
+    return Deck.fromJson(jsonDecode(resp.body));
+  }
+
+  @override
+  initState() {
+    super.initState();
+    futureDeck = fetchDeck();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(child: Text("Foobar"));
+    return Scaffold(
+        appBar: AppBar(
+          title: const Text('Let\s Play Blackjack!'),
+        ),
+        body: FutureBuilder<Deck>(
+            future: futureDeck,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return Center(child: Text(snapshot.data!.deckId));
+              } else {
+                return const Center(child: CircularProgressIndicator());
+              }
+            }));
   }
 }
 
@@ -56,7 +80,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(primarySwatch: Colors.red),
       routes: {
         // '/': (context) => const MyHomePage(),
-        '/game': (context) => const Game(),
+        '/game': (context) => Game(),
       },
       home: const MyHomePage(),
     );
