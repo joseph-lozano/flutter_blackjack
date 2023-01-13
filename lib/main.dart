@@ -16,6 +16,26 @@ class Game extends StatefulWidget {
   // return deckId
 }
 
+class CardsResponse {
+  final List<dynamic> cards;
+  CardsResponse({required this.cards});
+
+  factory CardsResponse.fromJson(Map<String, dynamic> json) {
+    return CardsResponse(cards: json['cards']);
+  }
+}
+
+class Card {
+  final String value;
+  final String imageUrl;
+
+  Card({required this.value, required this.imageUrl});
+
+  factory Card.fromJson(Map<String, dynamic> json) {
+    return Card(value: json["value"], imageUrl: json["image"]);
+  }
+}
+
 class Deck {
   final String deckId;
   final bool success;
@@ -40,16 +60,28 @@ class Deck {
 class _GameState extends State<Game> {
   final Uri dec = Uri.https('deckofcardsapi.com', '/api/deck/new/shuffle/');
   late Future<Deck> futureDeck;
+  late Future<List<Card>> futureCards;
 
   Future<Deck> fetchDeck() async {
     var resp = await http.get(dec);
     return Deck.fromJson(jsonDecode(resp.body));
   }
 
+  Future<List<Card>> fetchCard() async {
+    var deck = await futureDeck;
+    final Uri getCard = Uri.https(
+        'deckofcardsapi.com', '/api/deck/${deck.deckId}/draw/', {'count': '2'});
+    var resp = await http.get(getCard);
+    var cardResp = CardsResponse.fromJson(jsonDecode(resp.body));
+
+    return cardResp.cards.map((cardJson) => Card.fromJson(cardJson)).toList();
+  }
+
   @override
   initState() {
     super.initState();
     futureDeck = fetchDeck();
+    futureCards = fetchCard();
   }
 
   @override
@@ -62,7 +94,25 @@ class _GameState extends State<Game> {
             future: futureDeck,
             builder: (context, snapshot) {
               if (snapshot.hasData) {
-                return Center(child: Text(snapshot.data!.deckId));
+                return Container(
+                  child: FutureBuilder<List<Card>>(
+                      future: futureCards,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Center(
+                            child: Row(
+                              children: [
+                                Image.network(snapshot.data![0].imageUrl),
+                                Image.network(snapshot.data![1].imageUrl),
+                              ],
+                            ),
+                          );
+                        } else if (snapshot.hasError) {
+                          return Text('${snapshot.error}');
+                        }
+                        return const Center(child: CircularProgressIndicator());
+                      }),
+                );
               } else {
                 return const Center(child: CircularProgressIndicator());
               }
