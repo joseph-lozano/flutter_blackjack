@@ -1,18 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
 }
 
-// create the GamePage
-class GamePage extends StatelessWidget {
-  const GamePage({Key? key}) : super(key: key);
+class Game extends StatefulWidget {
+  Game({Key? key}) : super(key: key);
+
+  bool _isDataLoading = true;
+  String _deckId = "";
+
+  final dec = Uri.https('https://deckofcardsapi.com', '/api/deck/new/shuffle/');
+  // final response = await http.post(url, body: {'name': 'doodle', 'color': 'blue'});
+// print('Response status: ${response.statusCode}');
+// print('Response body: ${response.body}');
+
+// print(await http.read(Uri.https('example.com', 'foobar.txt')));
+
+  // const Game({super.key, this.deckId));
+
+  // final String deckId;
+  Future<Void> _getDeckId() async {
+    var response = await http.get(
+      Uri.encodeFull(dec),
+      headers: {"Accept": 'application/json'},
+    );
+
+    setState(() {
+      var data = json.decode(response.body);
+      _isDataLoading = false;
+      _deckId = data;
+    })
+    // return deckId
+  }
 
   @override
+  _GameState createState() => _GameState(deckId);
+}
+
+class _GameState extends State<Game> {
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text("Play Game")),
-        body: Center(child: Container(child: Text("The game page"))));
+    return Container(child: Text("Foobar"));
   }
 }
 
@@ -26,7 +56,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(primarySwatch: Colors.red),
       routes: {
         // '/': (context) => const MyHomePage(),
-        '/game': (context) => const GamePage(),
+        '/game': (context) => const Game(),
       },
       home: const MyHomePage(),
     );
